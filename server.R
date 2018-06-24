@@ -8,10 +8,6 @@
 #
 
 library(shiny)
-library(plotly)
-library(formattable)
-
-periodo = 30
 
 shinyServer(function(input, output) {
    
