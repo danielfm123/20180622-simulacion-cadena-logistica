@@ -21,9 +21,11 @@ shinyUI(fluidPage(
       h3("Geografía"),
       sliderInput("tiendas", "Numero Tiendas:",20,2000,100),
       sliderInput("lado","Cara del Cuadrado",0,100,20),
-      numericInput("semilla","semilla random",1,step = 1),
+      sliderInput("semilla","Escenario",0,100,1),
       h3("Logistica"),
       sliderInput("restock_bodega","Periodo Restock Bodega",1,120,30),
+      numericInput("costo_bodega","Costo Fijo Mensual Bodega",3000,0),
+      numericInput("costo_restock","Costo fijo restock bodega",300,0),
       sliderInput("restock_tienda","Periodo Restock Tienda",1,120,7),
       numericInput("costo_km","Costo por Kilometro",5,0),
       numericInput("costo_despacho","Costo fijo Despacho",50,0),
@@ -31,7 +33,7 @@ shinyUI(fluidPage(
       numericInput("sd_ventas_global","Desvest Ventas Global",100,0),
       sliderInput("nivel_seguridad","Nivel de Seguridad",0,1,0.95,0.01),
       numericInput("costo_unidad","Costo_Unidad",100,0),
-      numericInput("sku","Numero Sku",10,1),
+      numericInput("sku","Numero Sku",100,1),
       sliderInput("factor_dcto","Factor Descuento Anual",0,1,0.1,0.01)
     ),
     

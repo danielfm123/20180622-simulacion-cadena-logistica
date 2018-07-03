@@ -31,17 +31,20 @@ shinyServer(function(input, output) {
   get_costs = function(bodegas){
     # costo tienda
     sd_tienda_sku = input$sd_ventas_global/sqrt(input$tiendas*input$sku)
-    stock_seguriad_tienda = input$sku * sqrt(input$restock_tienda) * qnorm(1-(1-input$nivel_seguridad)/2,0,sd_tienda_sku)
+    stock_seguriad_tienda = input$sku * sqrt(input$restock_tienda) * qnorm(input$nivel_seguridad,0,sd_tienda_sku)
     valor_stock_seguriad_tienda = stock_seguriad_tienda * input$costo_unidad
-    costo_stock_seguriad_tienda = valor_stock_seguriad_tienda * input$factor_dcto^(periodo/365)
+    costo_stock_seguriad_tienda = valor_stock_seguriad_tienda * ((1+input$factor_dcto)^(periodo/365)-1)
     
     
     # Costo bodega
     sd_bodega_sku = input$sd_ventas_global/sqrt(bodegas*input$sku)
-    stock_seguriad_bodega = sqrt(input$restock_bodega) * qnorm(1-(1-input$nivel_seguridad)/2,0,sd_bodega_sku)
+    stock_seguriad_bodega = sqrt(input$restock_bodega) * qnorm(input$nivel_seguridad,0,sd_bodega_sku)
     valor_stock_seguriad_bodega = stock_seguriad_bodega * input$costo_unidad
-    costo_stock_seguriad_bodega = valor_stock_seguriad_bodega * input$factor_dcto^(periodo/365)
+    costo_stock_seguriad_bodega = valor_stock_seguriad_bodega * ((1+input$factor_dcto)^(periodo/365)-1)
     # print(costo_stock_seguriad_bodega)
+    
+    costo_restock_bodega = input$costo_restock * periodo / input$restock_bodega * bodegas
+    costo_bodegas = input$costo_bodega * bodegas
     
 
     set.seed(input$semilla)
@@ -63,7 +66,7 @@ shinyServer(function(input, output) {
                             costo_stock_seguridad = costo_stock_seguriad_bodega)
     
     data.frame(bodegas = bodegas,
-               costo_logistica = sum(dataset_tienda$costo_logistico),
+               costo_logistica = sum(dataset_tienda$costo_logistico) + costo_restock_bodega + costo_bodegas,
                costo_stock_seguridad_tienda = sum(dataset_tienda$costo_stock_seguridad),
                costo_stock_seguridad_bodega = sum(dataset_bodega$costo_stock_seguridad))
   }
