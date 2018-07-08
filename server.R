@@ -13,88 +13,80 @@ shinyServer(function(input, output) {
    
   values = reactiveValues()
 
-  observe({
+
+  output$geo = renderPlot({
     set.seed(input$semilla)
     values$coord = data.frame(x = runif(input$tiendas,0,input$lado),y = runif(input$tiendas,0,input$lado))
-  })
-  
-  output$geo = renderPlot({
     fit = kmeans(values$coord,input$bodegas,nstart = 10)
-    zona = as.factor(fit$cluster)
-    center = data.frame(fit$centers, zona = as.factor(1:input$bodegas))
-
-    ggplot() +
-      geom_point(aes(x,y, color = zona), values$coord) +
-      geom_point(aes(x,y),center, size = 3)
+        
+    isolate({
+      values$zona = as.factor(fit$cluster)
+      values$center = data.frame(fit$centers, zona = as.factor(1:input$bodegas))
+      
+      ggplot() +
+        geom_point(aes(x,y, color = values$zona), values$coord) +
+        geom_point(aes(x,y),values$center, size = 3)
+    })
   })
   
-  get_costs = function(bodegas){
+  observe({
+    dcto_periodo = ((1+input$factor_dcto)^(periodo/365)-1)
+    
     # costo tienda
-    sd_tienda_sku = input$sd_ventas_global/sqrt(input$tiendas*input$sku)
+    sd_tienda_sku = input$sd_ventas
     stock_seguriad_tienda = input$sku * sqrt(input$restock_tienda) * qnorm(input$nivel_seguridad,0,sd_tienda_sku)
     valor_stock_seguriad_tienda = stock_seguriad_tienda * input$costo_unidad
-    costo_stock_seguriad_tienda = valor_stock_seguriad_tienda * ((1+input$factor_dcto)^(periodo/365)-1)
-    
+    costo_stock_seguriad_tienda = valor_stock_seguriad_tienda * dcto_periodo
     
     # Costo bodega
-    sd_bodega_sku = input$sd_ventas_global/sqrt(bodegas*input$sku)
-    stock_seguriad_bodega = sqrt(input$restock_bodega) * qnorm(input$nivel_seguridad,0,sd_bodega_sku)
+    sd_bodega_sku = input$sd_ventas
+    stock_seguriad_bodega = input$sku * sqrt(input$restock_bodega) * qnorm(input$nivel_seguridad,0,sd_bodega_sku)
     valor_stock_seguriad_bodega = stock_seguriad_bodega * input$costo_unidad
-    costo_stock_seguriad_bodega = valor_stock_seguriad_bodega * ((1+input$factor_dcto)^(periodo/365)-1)
+    costo_stock_seguriad_bodega = valor_stock_seguriad_bodega * dcto_periodo
     # print(costo_stock_seguriad_bodega)
     
-    costo_restock_bodega = input$costo_restock * periodo / input$restock_bodega * bodegas
-    costo_bodegas = input$costo_bodega * bodegas
-    
-
-    set.seed(input$semilla)
-    coord = data.frame(x = runif(input$tiendas,0,input$lado),y = runif(input$tiendas,0,input$lado))
-
-    fit = kmeans(coord,bodegas,nstart = 10)
-    zona = as.factor(fit$cluster)
-    center = data.frame(fit$centers, zona = as.factor(1:bodegas))
-    # print(center)
-    
-    dataset_tienda = mutate(coord,zona = zona) %>%
-      left_join(center,by=c("zona"),suffix = c("","_bodega")) %>%
+    dataset_tienda = mutate(values$coord,zona = values$zona) %>%
+      left_join(values$center,by=c("zona"),suffix = c("","_bodega")) %>%
       mutate(dist_bodega = sqrt((x-x_bodega)^2 + (y-y_bodega)^2),
-             costo_logistico = (dist_bodega * input$costo_km + input$costo_despacho) * periodo/input$restock_tienda,
-             costo_stock_seguridad = costo_stock_seguriad_tienda)
+             costo_logistico = (dist_bodega * input$costo_km + input$costo_despacho) * periodo/input$restock_tienda)
     # print(dataset_tienda)
+
+    dataset_bodega = dataset_tienda %>% 
+      group_by(zona) %>% 
+      summarise(tiendas_zona = n()) %>% 
+      mutate(costo_stock_seguriad_bodega = costo_stock_seguriad_bodega * sqrt(tiendas_zona))
     
-    dataset_bodega = mutate(center,
-                            costo_stock_seguridad = costo_stock_seguriad_bodega)
+    costos = data.frame(
+      logistica_tiendas =      sum(dataset_tienda$costo_logistico),
+      logistica_bodega =       input$costo_restock * periodo / input$restock_bodega * input$bodegas,
+      operacion_bodegas =      input$costo_bodega * input$bodegas,
+      stock_venta_tienda =     input$mean_ventas_global * (input$restock_tienda / 2) *  input$costo_unidad * dcto_periodo,
+      stock_venta_bodega =     input$mean_ventas_global * (input$restock_bodega / 2) *  input$costo_unidad * dcto_periodo,
+      stock_seguridad_tienda = costo_stock_seguriad_tienda*input$tiendas,
+      stock_seguridad_bodega = sum(dataset_bodega$costo_stock_seguriad_bodega))
     
-    data.frame(bodegas = bodegas,
-               costo_logistica = sum(dataset_tienda$costo_logistico) + costo_restock_bodega + costo_bodegas,
-               costo_stock_seguridad_tienda = sum(dataset_tienda$costo_stock_seguridad),
-               costo_stock_seguridad_bodega = sum(dataset_bodega$costo_stock_seguridad))
-  }
-  
-  simulacion = reactive({
-    dataset = map_dfr(1:10,get_costs) 
+    values$costos = gather(costos, costo, monto)
+    
+    print(values$costos)
+    
   })
   
-  output$costos = renderPlot({
-    dataset = simulacion() %>% 
-      gather(linea,costo,-bodegas)
-    gr = ggplot(dataset,aes(bodegas,costo,fill=linea)) + geom_bar(stat="identity")+
-      scale_fill_discrete(guide = guide_legend())+
-      theme(legend.position="bottom")
-    # ggplotly(gr)
-    gr
+  output$costo_total = renderText({
+    paste("Costo Total:", accounting(sum(values$costos$monto),digits = 0L) )
   })
   
+  # output$costos = renderPlot({
+  #   gr = ggplot(values$costos,aes(costo,monto)) + geom_bar(stat="identity") + 
+  #     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  #   # ggplotly(gr)
+  #   gr
+  # })
+
   output$tabla_costos = renderFormattable({
-    dataset = mutate_at(simulacion(),vars(-bodegas),
-                        accounting,digits= 0L
-                     )
-    print(dataset)
-    formattable(dataset,
+    dataset = mutate(values$costos,monto = accounting(monto,digits= 0L))
+    formattable(dataset,align = c("l","r"),
                 list(
-                  costo_logistica = color_bar("pink"),
-                  costo_stock_seguridad_tienda = color_bar("lightgreen"),
-                  costo_stock_seguridad_bodega = color_bar("lightblue")
+                  monto = color_bar("pink")
                   )
                 )
   })

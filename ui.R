@@ -23,6 +23,7 @@ shinyUI(fluidPage(
       sliderInput("lado","Cara del Cuadrado",0,100,20),
       sliderInput("semilla","Escenario",0,100,1),
       h3("Logistica"),
+      sliderInput("bodegas","Numero de Bodegas",1,10,5),
       sliderInput("restock_bodega","Periodo Restock Bodega",1,120,30),
       numericInput("costo_bodega","Costo Fijo Mensual Bodega",3000,0),
       numericInput("costo_restock","Costo fijo restock bodega",300,0),
@@ -30,7 +31,8 @@ shinyUI(fluidPage(
       numericInput("costo_km","Costo por Kilometro",5,0),
       numericInput("costo_despacho","Costo fijo Despacho",50,0),
       h3("Ventas"),
-      numericInput("sd_ventas_global","Desvest Ventas Global",100,0),
+      numericInput("mean_ventas_global","Promedio Ventas Diarias",1000,0),
+      numericInput("sd_ventas","Desvest Ventas SKU x Tienda",1,0),
       sliderInput("nivel_seguridad","Nivel de Seguridad",0,1,0.95,0.01),
       numericInput("costo_unidad","Costo_Unidad",100,0),
       numericInput("sku","Numero Sku",100,1),
@@ -40,10 +42,10 @@ shinyUI(fluidPage(
     # Show a plot of the generated distribution
     mainPanel(
       h3("Geolicalización de Tiendas"),
-      sliderInput("bodegas","Numero de Bodegas",1,10,5),
       plotOutput("geo",width = 550,height = 500),
       h3("Costos"),
-      plotOutput("costos",width = 550,height = 500),
+      textOutput("costo_total"),
+      # plotOutput("costos",width = 550,height = 500),
       formattableOutput("tabla_costos",width = 550)
     )
   )
