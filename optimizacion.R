@@ -1,6 +1,7 @@
 # Setup
 library(tidyverse)
 library(future)
+library(tictoc)
 plan(multiprocess)
 options(dplyr.width = Inf)
 
@@ -22,26 +23,29 @@ productos = crossing(precio,venta_dia,porcentaje_margen) %>%
 
 getSimulation = function(nivel_servicio = 0.95,producto){
   
-  producto %>% mutate(
-      nivel_servicio = nivel_servicio,
-      venta_esperada = venta_dia * dias_restock,
-      stock_provicionado = qpois(nivel_servicio, venta_esperada),
-      nivel_servicio_real = ppois(stock_provicionado,venta_esperada),
+  # producto %>% mutate(
+    with(producto,{
+      nivel_servicio = nivel_servicio
+      venta_esperada = venta_dia * dias_restock
+      stock_provicionado = qpois(nivel_servicio, venta_esperada)
+      nivel_servicio_real = ppois(stock_provicionado,venta_esperada)
       venta_tienda = map2_dbl(venta_esperada, nivel_servicio, function(v,n){
         mean(qpois(seq(from = 0, to = nivel_servicio_real, length.out = 1000),v))
-      }),
-      venta_motoboy = ifelse(motoboy,venta_esperada - venta_tienda,0),
-      costo_motoboy = venta_motoboy * costo_motoboy,
-      venta_real = venta_motoboy + venta_tienda,
-      margen_venta_esperado = margen_unidad * venta_real,
-      inventario_promedio = max(0,stock_provicionado - venta_esperada / 2),
-      valor_inventario_promedio = inventario_promedio * costo_unidad,
-      costo_inventario = valor_inventario_promedio * ((1 + tasa_dcto_anual) ^ (dias_restock / 360) - 1),
+      })
+      venta_motoboy = ifelse(motoboy,venta_esperada - venta_tienda,0)
+      costo_motoboy = venta_motoboy * costo_motoboy
+      venta_real = venta_motoboy + venta_tienda
+      margen_venta_esperado = margen_unidad * venta_real
+      inventario_promedio = max(0,stock_provicionado - venta_esperada / 2)
+      valor_inventario_promedio = inventario_promedio * costo_unidad
+      costo_inventario = valor_inventario_promedio * ((1 + tasa_dcto_anual) ^ (dias_restock / 360) - 1)
       margen_global = margen_venta_esperado - costo_inventario - costo_motoboy
-    )
+    }) 
+    data.frame(producto,nivel_servicio,venta_esperada,stock_provicionado,nivel_servicio_real,venta_tienda)
 }
-
-# getSimulation(0.95,productos[1,])
+tic()
+getSimulation(0.95,productos[1,])
+toc()
 # map_dbl(seq(from = 0,to = .99, by = 0.01),margenAux,productos[61,])
 #Variables desicion
 
