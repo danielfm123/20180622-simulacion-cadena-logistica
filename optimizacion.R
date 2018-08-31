@@ -6,7 +6,7 @@ options(dplyr.width = Inf)
 
 # Parametros
 costo_despacho = 100
-tasa_dcto_anual = 0.3
+tasa_dcto_anual = 0.2
 costo_motoboy = 10
 periodo = 30 #dia
 
@@ -46,7 +46,7 @@ getSimulation = function(nivel_servicio = 0.95,producto){
 #Variables desicion
 
 dias_restock = 7
-motoboy = T
+motoboy = F
 
 optimo_por_producto = map(1:nrow(productos),function(p){
   producto = productos[p,]
