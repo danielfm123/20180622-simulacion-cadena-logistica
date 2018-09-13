@@ -9,7 +9,7 @@ options(dplyr.width = Inf)
 # Parametros
 costo_despacho = 1.5 # por equipo
 tasa_dcto_anual = 0.2
-costo_motoboy = 6000
+costo_motoboy = 6
 
 # Data se ventas
 par_precio = c(50,100,200,400,800)
